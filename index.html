@@ -12,70 +12,88 @@
 <script async="async" data-cfasync="false" src="https://pl31061995.profitableratecpmnetwork.com/6f7ad99420f22998066af520e107a80a/invoke.js"></script>
 </head>
 <body>
-<header class="top"><div class="logo">VIDEO <b>XXX</b></div><div class="search"><input id="search" placeholder="Cari video..." oninput="render()"><button type="button">⌕</button></div><button class="upload" onclick="openUpload()">＋ Upload</button></header>
+<header class="top"><div class="logo">VIDEO <b>XXX</b></div><div class="search"><input id="search" placeholder="Cari video..." oninput="render()"><button type="button">⌕</button></div><button class="upload" id="uploadTop">＋ Upload</button></header>
 <div class="ad-slot"><div id="container-6f7ad99420f22998066af520e107a80a"></div></div>
-<div class="layout"><aside class="side"><a class="nav" href="#" onclick="showAll(event)">⌂ Beranda</a><a class="nav" href="#" onclick="sortNewest(event)">🔥 Terbaru</a><a class="nav" href="#" onclick="openUpload()">🎬 Upload Video</a></aside><main><div id="grid" class="grid"></div></main></div>
-<div class="modal" id="modal"><div class="box"><h2>Upload Video</h2><label>Judul</label><input id="title" placeholder="Judul video"><label>Deskripsi</label><textarea id="desc" placeholder="Deskripsi video"></textarea><label>File video</label><input id="file" type="file" accept="video/*"><div class="actions"><button class="btn secondary" onclick="closeUpload()">Batal</button><button class="btn primary" id="uploadBtn" onclick="save()">Upload</button></div><div class="progress" id="progress"><i></i></div><div class="status" id="status"></div><div class="hint">Video akan disimpan online di Supabase dan dapat dimuat dari perangkat lain.</div></div></div>
+<div class="layout"><aside class="side"><a class="nav" href="#" id="homeNav">⌂ Beranda</a><a class="nav" href="#" id="newestNav">🔥 Terbaru</a><a class="nav" href="#" id="uploadTop">🎬 Upload Video</a></aside><main><div id="grid" class="grid"></div></main></div>
+<div class="modal" id="modal"><div class="box"><h2>Upload Video</h2><label>Judul</label><input id="title" placeholder="Judul video"><label>Deskripsi</label><textarea id="desc" placeholder="Deskripsi video"></textarea><label>File video</label><input id="file" type="file" accept="video/*"><div class="actions"><button class="btn secondary" id="cancelUpload">Batal</button><button class="btn primary" id="uploadBtn">Upload</button></div><div class="progress" id="progress"><i></i></div><div class="status" id="status"></div><div class="status" id="jsStatus"></div><div class="hint">Video akan disimpan online di Supabase dan dapat dimuat dari perangkat lain.</div></div></div>
 <div class="viewer" id="viewer"><button class="close" onclick="closeViewer()">×</button><div class="watch"><video id="player" controls playsinline></video><h1 id="vtitle"></h1><div class="muted" id="vmeta"></div><p id="vdesc"></p></div></div>
 <script>
 const SUPABASE_URL='https://vvzaksszpznpyguevlbr.supabase.co';
 const SUPABASE_KEY='sb_publishable_4bCVL2Y7Cpyq4JI8lp_LfA_I4jaa76X';
-const {createClient}=window.supabase;
-const supabase=createClient(SUPABASE_URL,SUPABASE_KEY);
 const BUCKET='videos';
-let videos=[], currentVideo=null, viewerHistory=false, currentObjectUrl=null;
+let supabaseClient=null, videos=[], viewerHistory=false;
 const $=id=>document.getElementById(id);
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function setStatus(msg){if($('jsStatus'))$('jsStatus').textContent=msg||''}
+function publicUrl(path){return supabaseClient.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}
+function openUpload(){ $('modal').classList.add('show'); $('status').textContent=''; setStatus('') }
+function closeUpload(){ $('modal').classList.remove('show') }
+function showAll(e){if(e)e.preventDefault();$('search').value='';render()}
+function sortNewest(e){if(e)e.preventDefault();videos.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));render()}
 async function refresh(){
-  const {data,error}=await supabase.from('videos').select('*').order('created_at',{ascending:false});
+  if(!supabaseClient)return;
+  const {data,error}=await supabaseClient.from('videos').select('*').order('created_at',{ascending:false});
   if(error){console.error(error);$('grid').innerHTML='<div class="empty" style="grid-column:1/-1"><h2>Gagal memuat video</h2><p>'+esc(error.message)+'</p></div>';return}
   videos=data||[];render();
 }
-function publicUrl(path){return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl}
 function render(){
   const q=$('search').value.trim().toLowerCase();
   const list=videos.filter(v=>(v.title+' '+(v.description||'')).toLowerCase().includes(q));
   const g=$('grid');
   if(!list.length){g.innerHTML='<div class="empty" style="grid-column:1/-1"><h2>Belum ada video</h2><p>Klik Upload untuk menambahkan video.</p></div>';return}
-  g.innerHTML=list.map(v=>{const u=publicUrl(v.file_path);return `<article class="card" onclick="watch('${v.id}')"><div class="thumb"><video src="${u}" muted preload="metadata" playsinline></video></div><div class="info"><div class="avatar">V</div><div><div class="title">${esc(v.title)}</div><div class="meta">Video XXX<br>${new Date(v.created_at).toLocaleDateString('id-ID')}</div></div></div></article>`}).join('');
+  g.innerHTML=list.map(v=>{const u=publicUrl(v.file_path);return `<article class="card" data-video-id="${esc(v.id)}"><div class="thumb"><video src="${u}" muted preload="metadata" playsinline></video></div><div class="info"><div class="avatar">V</div><div><div class="title">${esc(v.title)}</div><div class="meta">Video XXX<br>${new Date(v.created_at).toLocaleDateString('id-ID')}</div></div></div></article>`}).join('');
+  g.querySelectorAll('[data-video-id]').forEach(el=>el.addEventListener('click',()=>watch(el.dataset.videoId)));
 }
-function showAll(e){if(e)e.preventDefault();$('search').value='';render()}
-function sortNewest(e){if(e)e.preventDefault();videos.sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));render()}
-function openUpload(){$('modal').classList.add('show');$('status').textContent=''}
-function closeUpload(){if(!$('uploadBtn').disabled)$('modal').classList.remove('show')}
 async function save(){
   const f=$('file').files[0], t=$('title').value.trim(), d=$('desc').value.trim();
-  if(!f||!t)return alert('Isi judul dan pilih video.');
-  if(!f.type.startsWith('video/'))return alert('Pilih file video.');
+  if(!f||!t){alert('Isi judul dan pilih video.');return}
+  if(!f.type.startsWith('video/')){alert('Pilih file video.');return}
+  if(!supabaseClient){alert('Koneksi Supabase belum siap. Muat ulang halaman lalu coba lagi.');return}
   const safe=f.name.toLowerCase().replace(/[^a-z0-9._-]+/g,'-');
   const path=Date.now()+'-'+crypto.randomUUID()+'-'+safe;
-  const btn=$('uploadBtn'), prog=$('progress'), bar=prog.querySelector('i'), status=$('status');
-  btn.disabled=true;prog.style.display='block';bar.style.width='15%';status.textContent='Mengunggah video...';
+  const btn=$('uploadBtn'),prog=$('progress'),bar=prog.querySelector('i'),status=$('status');
+  btn.disabled=true;prog.style.display='block';bar.style.width='10%';status.textContent='Mengunggah video...';
   try{
-    const {error:upErr}=await supabase.storage.from(BUCKET).upload(path,f,{contentType:f.type,upsert:false});
+    const {error:upErr}=await supabaseClient.storage.from(BUCKET).upload(path,f,{contentType:f.type,upsert:false});
     if(upErr)throw upErr;
     bar.style.width='75%';status.textContent='Menyimpan informasi video...';
-    const {error:dbErr}=await supabase.from('videos').insert({title:t,description:d,file_path:path});
-    if(dbErr){await supabase.storage.from(BUCKET).remove([path]);throw dbErr}
-    bar.style.width='100%';status.textContent='Upload berhasil. Video tersimpan online.';
+    const {error:dbErr}=await supabaseClient.from('videos').insert({title:t,description:d,file_path:path});
+    if(dbErr){await supabaseClient.storage.from(BUCKET).remove([path]);throw dbErr}
+    bar.style.width='100%';status.textContent='Upload berhasil!';
     $('title').value='';$('desc').value='';$('file').value='';await refresh();
-    setTimeout(()=>{$('modal').classList.remove('show');prog.style.display='none';bar.style.width='0';status.textContent='';},900);
+    setTimeout(()=>{closeUpload();prog.style.display='none';bar.style.width='0';status.textContent=''},700);
   }catch(err){console.error(err);status.textContent='Gagal: '+err.message;alert('Upload gagal: '+err.message)}
   finally{btn.disabled=false}
 }
 function watch(id){
-  const v=videos.find(x=>x.id===id);if(!v)return;currentVideo=v;
-  const url=publicUrl(v.file_path);$('player').src=url;$('vtitle').textContent=v.title;$('vmeta').textContent='Video XXX • '+new Date(v.created_at).toLocaleDateString('id-ID');$('vdesc').textContent=v.description||'';$('viewer').classList.add('show');
+  const v=videos.find(x=>x.id===id);if(!v)return;
+  $('player').src=publicUrl(v.file_path);$('vtitle').textContent=v.title;$('vmeta').textContent='Video XXX • '+new Date(v.created_at).toLocaleDateString('id-ID');$('vdesc').textContent=v.description||'';$('viewer').classList.add('show');
   if(!viewerHistory){history.pushState({videoViewer:true},'',location.href.split('#')[0]+'#watch-'+encodeURIComponent(id));viewerHistory=true}
   $('player').play().catch(()=>{});
 }
 function closeViewer(fromPop=false){
   if(!$('viewer').classList.contains('show'))return;
-  $('player').pause();$('player').removeAttribute('src');$('player').load();$('viewer').classList.remove('show');currentVideo=null;
-  if(viewerHistory&&!fromPop){viewerHistory=false;history.back()} else if(fromPop){viewerHistory=false}
+  $('player').pause();$('player').removeAttribute('src');$('player').load();$('viewer').classList.remove('show');
+  if(viewerHistory&&!fromPop){viewerHistory=false;history.back()} else viewerHistory=false;
 }
 window.addEventListener('popstate',()=>{if(viewerHistory)closeViewer(true)});
-window.addEventListener('hashchange',()=>{if(viewerHistory&&location.hash.startsWith('#watch-'))return});
-refresh();
+
+document.addEventListener('DOMContentLoaded',()=>{
+  $('uploadTop').addEventListener('click',openUpload);
+  $('uploadNav').addEventListener('click',openUpload);
+  $('homeNav').addEventListener('click',showAll);
+  $('newestNav').addEventListener('click',sortNewest);
+  $('cancelUpload').addEventListener('click',closeUpload);
+  $('uploadBtn').addEventListener('click',save);
+  $('search').addEventListener('input',render);
+  // Give the Supabase CDN a moment to initialize, while keeping the Upload button functional.
+  if(window.supabase&&window.supabase.createClient){
+    supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);setStatus('');refresh();
+  }else{
+    setStatus('Koneksi library belum siap. Coba refresh halaman.');
+    $('grid').innerHTML='<div class="empty" style="grid-column:1/-1"><h2>Menyiapkan website...</h2><p>Jika pesan ini tetap muncul, refresh halaman.</p></div>';
+    setTimeout(()=>{if(window.supabase&&window.supabase.createClient){supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);setStatus('');refresh()}},1500);
+  }
+});
 </script>
 </body></html>
