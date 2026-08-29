@@ -20,7 +20,7 @@
 <script>
 const SUPABASE_URL='https://vvzaksszpznpyguevlbr.supabase.co';
 const SUPABASE_KEY='sb_publishable_4bCVL2Y7Cpyq4JI8lp_LfA_I4jaa76X';
-const BUCKET='videos';
+const BUCKET='video';
 let supabaseClient=null, videos=[], viewerHistory=false;
 const $=id=>document.getElementById(id);
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
