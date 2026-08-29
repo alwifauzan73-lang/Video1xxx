@@ -15,7 +15,7 @@
 <header class="top"><div class="logo">VIDEO <b>XXX</b></div><div class="search"><input id="search" placeholder="Cari video..." oninput="render()"><button type="button">⌕</button></div><button class="upload" id="uploadTop">＋ Upload</button></header>
 <div class="ad-slot"><div id="container-6f7ad99420f22998066af520e107a80a"></div></div>
 <div class="layout"><aside class="side"><a class="nav" href="#" id="homeNav">⌂ Beranda</a><a class="nav" href="#" id="newestNav">🔥 Terbaru</a><a class="nav" href="#" id="uploadNav">🎬 Upload Video</a></aside><main><div id="grid" class="grid"></div></main></div>
-<div class="modal" id="modal"><div class="box"><h2>Upload Video</h2><label>Judul</label><input id="title" placeholder="Judul video"><label>Deskripsi</label><textarea id="desc" placeholder="Deskripsi video"></textarea><label>File video</label><input id="file" type="file" accept="video/*"><div class="actions"><button class="btn secondary" id="cancelUpload">Batal</button><button class="btn primary" id="uploadBtn">Upload</button></div><div class="progress" id="progress"><i></i></div><div class="status" id="status"></div><div class="status" id="jsStatus"></div><div class="hint">Video akan disimpan online di Supabase dan dapat dimuat dari perangkat lain.</div></div></div>
+<div class="modal" id="modal"><div class="box"><h2>Upload Video</h2><label>Judul</label><input id="title" placeholder="Judul video"><label>Deskripsi</label><textarea id="desc" placeholder="Deskripsi video"></textarea><label>File video</label><input id="file" type="file" accept="video/*"><div class="actions"><button class="btn secondary" id="cancelUpload">Batal</button><button class="btn primary" id="uploadBtn">Upload</button></div><div class="progress" id="progress"><i></i></div><div class="status" id="status"></div><div class="status" id="jsStatus"></div><div class="hint">Video akan disimpan online di Supabase dan dapat dimuat dari perangkat lain. Tombol 🗑 Hapus menghapus file dan datanya dari website.</div></div></div>
 <div class="viewer" id="viewer"><button class="close" onclick="closeViewer()">×</button><div class="watch"><video id="player" controls playsinline></video><h1 id="vtitle"></h1><div class="muted" id="vmeta"></div><p id="vdesc"></p></div></div>
 <script>
 const SUPABASE_URL='https://vvzaksszpznpyguevlbr.supabase.co';
@@ -41,8 +41,16 @@ function render(){
   const list=videos.filter(v=>(v.title+' '+(v.description||'')).toLowerCase().includes(q));
   const g=$('grid');
   if(!list.length){g.innerHTML='<div class="empty" style="grid-column:1/-1"><h2>Belum ada video</h2><p>Klik Upload untuk menambahkan video.</p></div>';return}
-  g.innerHTML=list.map(v=>{const u=publicUrl(v.file_path);return `<article class="card" data-video-id="${esc(v.id)}"><div class="thumb"><video src="${u}" muted preload="metadata" playsinline></video></div><div class="info"><div class="avatar">V</div><div><div class="title">${esc(v.title)}</div><div class="meta">Video XXX<br>${new Date(v.created_at).toLocaleDateString('id-ID')}</div></div></div></article>`}).join('');
-  g.querySelectorAll('[data-video-id]').forEach(el=>el.addEventListener('click',()=>watch(el.dataset.videoId)));
+  g.innerHTML=list.map(v=>{const u=publicUrl(v.file_path);return `<article class="card" data-video-id="${esc(v.id)}"><div class="thumb"><video src="${u}" muted preload="metadata" playsinline></video></div><div class="info"><div class="avatar">V</div><div><div class="title">${esc(v.title)}</div><div class="meta">Video XXX<br>${new Date(v.created_at).toLocaleDateString('id-ID')}</div><button type="button" class="btn secondary delete-video" data-delete-id="${esc(v.id)}" style="margin-top:8px;padding:6px 10px;font-size:12px;">🗑 Hapus</button></div></div></article>`}).join('');
+  g.querySelectorAll('[data-video-id]').forEach(el=>el.addEventListener('click',(ev)=>{
+    if(ev.target.closest('.delete-video')) return;
+    watch(el.dataset.videoId);
+  }));
+  g.querySelectorAll('.delete-video').forEach(btn=>btn.addEventListener('click',(ev)=>{
+    ev.preventDefault();
+    ev.stopPropagation();
+    deleteVideo(btn.dataset.deleteId);
+  }));
 }
 async function save(){
   const f=$('file').files[0], t=$('title').value.trim(), d=$('desc').value.trim();
@@ -65,6 +73,28 @@ async function save(){
   }catch(err){console.error(err);status.textContent='Gagal: '+err.message;alert('Upload gagal: '+err.message)}
   finally{btn.disabled=false}
 }
+async function deleteVideo(id){
+  const v=videos.find(x=>String(x.id)===String(id));
+  if(!v)return;
+  const ok=confirm('Hapus video "'+(v.title||'tanpa judul')+'"?\\n\\nFile video dan data videonya akan dihapus dari website.');
+  if(!ok)return;
+  setStatus('Menghapus video...');
+  try{
+    const {error:storageErr}=await supabaseClient.storage.from(BUCKET).remove([v.file_path]);
+    if(storageErr) throw storageErr;
+
+    const {error:dbErr}=await supabaseClient.from('videos').delete().eq('id',v.id);
+    if(dbErr) throw dbErr;
+
+    await refresh();
+    setStatus('Video berhasil dihapus.');
+  }catch(err){
+    console.error(err);
+    setStatus('Gagal menghapus: '+err.message);
+    alert('Hapus gagal: '+err.message);
+  }
+}
+
 function watch(id){
   const v=videos.find(x=>x.id===id);if(!v)return;
   $('player').src=publicUrl(v.file_path);$('vtitle').textContent=v.title;$('vmeta').textContent='Video XXX • '+new Date(v.created_at).toLocaleDateString('id-ID');$('vdesc').textContent=v.description||'';$('viewer').classList.add('show');
