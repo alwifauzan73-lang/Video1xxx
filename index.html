@@ -14,7 +14,7 @@
 <body>
 <header class="top"><div class="logo">VIDEO <b>XXX</b></div><div class="search"><input id="search" placeholder="Cari video..." oninput="render()"><button type="button">⌕</button></div><button class="upload" id="uploadTop">＋ Upload</button></header>
 <div class="ad-slot"><div id="container-6f7ad99420f22998066af520e107a80a"></div></div>
-<div class="layout"><aside class="side"><a class="nav" href="#" id="homeNav">⌂ Beranda</a><a class="nav" href="#" id="newestNav">🔥 Terbaru</a><a class="nav" href="#" id="uploadTop">🎬 Upload Video</a></aside><main><div id="grid" class="grid"></div></main></div>
+<div class="layout"><aside class="side"><a class="nav" href="#" id="homeNav">⌂ Beranda</a><a class="nav" href="#" id="newestNav">🔥 Terbaru</a><a class="nav" href="#" id="uploadNav">🎬 Upload Video</a></aside><main><div id="grid" class="grid"></div></main></div>
 <div class="modal" id="modal"><div class="box"><h2>Upload Video</h2><label>Judul</label><input id="title" placeholder="Judul video"><label>Deskripsi</label><textarea id="desc" placeholder="Deskripsi video"></textarea><label>File video</label><input id="file" type="file" accept="video/*"><div class="actions"><button class="btn secondary" id="cancelUpload">Batal</button><button class="btn primary" id="uploadBtn">Upload</button></div><div class="progress" id="progress"><i></i></div><div class="status" id="status"></div><div class="status" id="jsStatus"></div><div class="hint">Video akan disimpan online di Supabase dan dapat dimuat dari perangkat lain.</div></div></div>
 <div class="viewer" id="viewer"><button class="close" onclick="closeViewer()">×</button><div class="watch"><video id="player" controls playsinline></video><h1 id="vtitle"></h1><div class="muted" id="vmeta"></div><p id="vdesc"></p></div></div>
 <script>
@@ -79,13 +79,13 @@ function closeViewer(fromPop=false){
 window.addEventListener('popstate',()=>{if(viewerHistory)closeViewer(true)});
 
 document.addEventListener('DOMContentLoaded',()=>{
-  $('uploadTop').addEventListener('click',openUpload);
-  $('uploadNav').addEventListener('click',openUpload);
-  $('homeNav').addEventListener('click',showAll);
-  $('newestNav').addEventListener('click',sortNewest);
-  $('cancelUpload').addEventListener('click',closeUpload);
-  $('uploadBtn').addEventListener('click',save);
-  $('search').addEventListener('input',render);
+  $('uploadTop')?.addEventListener('click',openUpload);
+  $('uploadNav')?.addEventListener('click',openUpload);
+  $('homeNav')?.addEventListener('click',showAll);
+  $('newestNav')?.addEventListener('click',sortNewest);
+  $('cancelUpload')?.addEventListener('click',closeUpload);
+  $('uploadBtn')?.addEventListener('click',save);
+  $('search')?.addEventListener('input',render);
   // Give the Supabase CDN a moment to initialize, while keeping the Upload button functional.
   if(window.supabase&&window.supabase.createClient){
     supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);setStatus('');refresh();
